@@ -2,101 +2,49 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-int pipeAry[12][2];
-void prime(int layer)
+int subProcess(int *oldFd)
 {
-    if (layer == 11)
+    close(oldFd[1]); // 关闭原管道写端
+    int fd[2];
+    int prime;
+    int num;
+    if (read(oldFd[0], &prime, 4)) // 若能从原管道读到数据
     {
-        exit(0);
-    }
-    int *EOF = (int *)malloc(sizeof(int));
-    *EOF = -1;
-    int *num = (int *)malloc(sizeof(int)); // 存放读出来的数
-    int min_num = 0;
-    read(pipeAry[layer][0], num, sizeof(int)); // 读数据
-    if (*num == *EOF)
-    {
-        fprintf(1, "over!");
-        exit(0);
-    }
-    else
-    {
-        min_num = *num;
-        fprintf(1, "prime %d\n", min_num);
-        if (pipe(pipeAry[layer + 1]) == -1)
+        printf("prime %d\n", prime); // 第一个数据为质数,进行输出
+        pipe(fd);                    // 创建管道和子进程
+        if (fork() == 0)             // 子进程
+            subProcess(fd);          // 递归调用
+        else                         // 父进程
         {
-            // 若创建右侧管道失败
-            exit(2);
-        }
-    }
-    int pid = fork();
-    if (pid < 0)
-    {
-        exit(3);
-    }
-    if (pid == 0)
-    {
-        close(pipeAry[layer + 1][1]);
-        prime(layer + 1);
-        return;
-    }
-    else
-    {
-        close(pipeAry[layer][1]);
-        close(pipeAry[layer + 1][0]);
-        while (read(pipeAry[layer][0], num, sizeof(int)) && *num != *EOF)
-        {
-            // fprintf(1,"Layer: %d num:%d\n",layer,min_num);
-            if ((*num) % min_num != 0)
+            close(fd[0]);                   // 关闭新管道读端
+            while (read(oldFd[0], &num, 4)) // 从原管道进行读取
             {
-                // 加入右侧管道
-                write(pipeAry[layer + 1][1], num, sizeof(int));
+                if (num % prime != 0) // 不能被记录的质数整除则写入新管道
+                    write(fd[1], &num, 4);
             }
+            close(oldFd[0]); // 此时父进程的原管道关闭, 则关闭原管道的读端
+            close(fd[1]);    // 关闭新管道的写端
+            wait((int *)0);  // 等待子进程结束
         }
-        write(pipeAry[layer + 1][1], EOF, sizeof(int));
-        close(pipeAry[layer + 1][1]);
-        close(pipeAry[layer][0]);
-        wait(0);
-        free(num);
-    }
-    free(EOF);
-}
-int main(int argc, char *argv[])
-{
-    if (argc != 1)
-    {
-        exit(1);
-    }
-    if (pipe(pipeAry[0]) == -1)
-    {
-        exit(2);
-    }
-    int pid = fork();
-    if (pid < 0)
-    {
-        exit(3);
-    }
-    int *EOF = (int *)malloc(sizeof(int));
-    *EOF = -1;
-    if (pid == 0)
-    {
-        close(pipeAry[0][1]);
-        prime(0);
-        close(pipeAry[1][1]);
     }
     else
+        close(oldFd[0]); // 此时说明原管道已关闭,第一个数字都读不出, 不创建子进程直接关闭原管道读端
+    exit(0);
+}
+
+int main()
+{
+    int fd[2];
+    pipe(fd);
+    if (fork() == 0) // 子进程
+        subProcess(fd);
+    else // 父进程
     {
-        close(pipeAry[0][0]);
-        int status = 0;
-        // 放入2-35
-        for (int i = 2; i <= 35; ++i)
-        {
-            write(pipeAry[0][1], &i, sizeof(i));
-        }
-        write(pipeAry[0][1], EOF, sizeof(int));
-        close(pipeAry[0][1]);
-        wait(&status);
+        close(fd[0]);
+        for (int i = 2; i <= 35; ++i) // 遍历 2~35 写入管道写端
+            write(fd[1], &i, 4);
+        close(fd[1]); // 写完关闭管道写端并等待子进程结束
+        wait((int *)0);
     }
-    free(EOF);
     exit(0);
 }
