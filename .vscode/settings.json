@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "x": "c"
+        "x": "c",
+        "sysinfo.h": "c"
     }
 }
