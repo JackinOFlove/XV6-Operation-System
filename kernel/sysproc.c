@@ -98,24 +98,24 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
-uint64 sys_sigalarm(void)
+uint64 sys_sigalarm(void) // 设置一个闹钟信号处理程序和时间间隔。
 {
   int interval;
   uint64 handler;
 
-  if (argint(0, &interval) < 0)
+  if (argint(0, &interval) < 0) // 获取第一个参数（时间间隔）
     return -1;
-  if (argaddr(1, &handler) < 0)
+  if (argaddr(1, &handler) < 0) // 获取第二个参数（信号处理程序的地址）
     return -1;
 
-  myproc()->alarm_interval = interval;
-  myproc()->alarm_handler = handler;
+  myproc()->alarm_interval = interval; // 设置当前进程的闹钟信号时间间隔
+  myproc()->alarm_handler = handler;   // 设置当前进程的闹钟信号处理程序地址
   return 0;
 }
 
-uint64 sys_sigreturn(void)
+uint64 sys_sigreturn(void) // 用于从信号处理程序中返回，恢复进程在信号处理程序被调用之前的状态。
 {
-  memmove(myproc()->trapframe, &(myproc()->alarm_trapframe), sizeof(struct trapframe));
-  myproc()->alarm_ticks = 0;
+  memmove(myproc()->trapframe, &(myproc()->alarm_trapframe), sizeof(struct trapframe)); // 恢复进程的 trapframe（寄存器上下文）为闹钟信号处理之前的状态
+  myproc()->alarm_ticks = 0;                                                            // 重置闹钟信号计数器
   return 0;
 }

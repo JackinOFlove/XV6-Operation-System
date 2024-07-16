@@ -79,13 +79,13 @@ void usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if (which_dev == 2)
+  if (which_dev == 2) // 检查是否是指定设备的中断
   {
     if (p->alarm_interval)
     {
-      if (++p->alarm_ticks == p->alarm_interval)
+      if (++p->alarm_ticks == p->alarm_interval) // 递增 alarm_ticks 计数器
       {
-        memmove(&(p->alarm_trapframe), p->trapframe, sizeof(*(p->trapframe)));
+        memmove(&(p->alarm_trapframe), p->trapframe, sizeof(*(p->trapframe))); // 在闹钟信号处理程序执行完毕后，恢复到中断之前的状态。
         p->trapframe->epc = p->alarm_handler;
       }
     }

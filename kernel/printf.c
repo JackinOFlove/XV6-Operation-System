@@ -138,10 +138,10 @@ void printfinit(void)
 void backtrace(void)
 {
   printf("backtrace:\n");
-  uint64 fp = r_fp();
-  while (PGROUNDDOWN(fp) < PGROUNDUP(fp))
+  uint64 fp = r_fp();                     // 返回当前的帧指针
+  while (PGROUNDDOWN(fp) < PGROUNDUP(fp)) // 只要当前帧指针 fp 在同一个页面内，就继续循环。
   {
     printf("%p\n", *(uint64 *)(fp - 8));
-    fp = *(uint64 *)(fp - 16);
+    fp = *(uint64 *)(fp - 16); // 更新 fp 为前一个栈帧的帧指针
   }
 }
