@@ -518,27 +518,32 @@ sys_pipe(void)
   }
   return 0;
 }
+// 用于将文件映射到进程的地址空间
 uint64 sys_mmap(void)
 {
   uint64 addr;
   int length, prot, flags, fd, offset;
   struct proc *p = myproc();
   struct file *file;
+  //// 获取系统调用参数，如果任何一个参数提取失败，返回 -1
   if (argaddr(0, &addr) || argint(1, &length) || argint(2, &prot) ||
       argint(3, &flags) || argfd(4, &fd, &file) || argint(5, &offset))
     return -1;
-
+  // 检查文件是否可写，保护标志是否需要写权限，以及映射标志是否为共享映射
+  // 如果条件不满足，返回 -1
   if (!file->writable && (prot & PROT_WRITE) && flags == MAP_SHARED)
     return -1;
-
+  // 将映射长度向上舍入到最近的页边界
   length = PGROUNDUP(length);
+  // 检查是否映射的长度超过了进程的最大虚拟地址空间
   if (p->sz > MAXVA - length)
     return -1;
-
+  // 遍历进程的虚拟内存区域（VMA）数组，找到一个未使用的 VMA 条目
   for (int i = 0; i < VMASIZE; i++)
   {
     if (p->vma[i].used == 0)
     {
+      // 设置该VMA条目的参数
       p->vma[i].used = 1;
       p->vma[i].addr = p->sz;
       p->vma[i].length = length;
@@ -554,7 +559,7 @@ uint64 sys_mmap(void)
   }
   return -1;
 }
-
+// 通过取消进程地址空间中指定区域的映射，释放相关资源
 uint64
 sys_munmap(void)
 {
@@ -562,27 +567,35 @@ sys_munmap(void)
   int length;
   struct proc *p = myproc();
   struct vma *vma = 0;
+  // 从用户空间获取参数 addr 和 length
   if (argaddr(0, &addr) || argint(1, &length))
     return -1;
   addr = PGROUNDDOWN(addr);
   length = PGROUNDUP(length);
+  // 遍历当前进程的虚拟内存区域（VMA）数组
   for (int i = 0; i < VMASIZE; i++)
   {
     if (addr >= p->vma[i].addr || addr < p->vma[i].addr + p->vma[i].length)
     {
+      // 找到对应的 VMA
       vma = &p->vma[i];
       break;
     }
   }
+  // 如果没有找到对应的 VMA，则返回 0
   if (vma == 0)
     return 0;
+  // 如果找到的 VMA 的起始地址等于要取消映射的地址
   if (vma->addr == addr)
   {
     vma->addr += length;
     vma->length -= length;
+    // 如果 VMA 是共享映射，则将内存内容写回文件
     if (vma->flags & MAP_SHARED)
       filewrite(vma->file, addr, length);
+    // 取消进程页表中的映射
     uvmunmap(p->pagetable, addr, length / PGSIZE, 1);
+    // 如果 VMA 的长度变为 0，则关闭文件并标记 VMA 为未使用
     if (vma->length == 0)
     {
       fileclose(vma->file);

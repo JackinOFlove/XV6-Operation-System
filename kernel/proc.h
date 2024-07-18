@@ -86,14 +86,14 @@ struct trapframe
 #define VMASIZE 16
 struct vma
 {
-  struct file *file;
-  int fd;
-  int used;
-  uint64 addr;
-  int length;
-  int prot;
-  int flags;
-  int offset;
+  struct file *file; // 指向映射文件的指针
+  int fd;            // 文件描述符
+  int used;          // 标志该 VMA 是否被使用
+  uint64 addr;       // 虚拟内存区域的起始地址
+  int length;        // 虚拟内存区域的长度
+  int prot;          // 内存保护标志
+  int flags;         // 映射标志
+  int offset;        // 文件偏移量
 };
 enum procstate
 {

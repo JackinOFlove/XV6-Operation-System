@@ -76,20 +76,20 @@ void usertrap(void)
     uint64 va = r_stval();
     if (va >= p->sz || va > MAXVA || PGROUNDUP(va) == PGROUNDDOWN(p->trapframe->sp))
       p->killed = 1;
-    else
+    else // 如果地址在合法范围内
     {
       struct vma *vma = 0;
       for (int i = 0; i < VMASIZE; i++)
       {
         if (p->vma[i].used == 1 && va >= p->vma[i].addr &&
-            va < p->vma[i].addr + p->vma[i].length)
+            va < p->vma[i].addr + p->vma[i].length) // 找到包含该地址的 VMA
         {
-          vma = &p->vma[i];
+          vma = &p->vma[i]; // 将该 VMA 记录在 vma 变量中
           break;
         }
       }
 
-      if (vma)
+      if (vma) // 如果找到有效的 VMA，将虚拟地址对齐到页边界
       {
         va = PGROUNDDOWN(va);
         uint64 offset = va - vma->addr;
