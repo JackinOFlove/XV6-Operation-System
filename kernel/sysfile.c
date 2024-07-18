@@ -319,18 +319,18 @@ sys_open(void)
   }
   else
   {
-    int max_depth = 20, depth = 0;
+    int max_depth = 20, depth = 0; // 设置符号链接解析的最大递归深度为 20，防止无限循环
     while (1)
     {
-      if ((ip = namei(path)) == 0)
+      if ((ip = namei(path)) == 0) // 调用 namei 函数解析路径，返回对应的 inode 指针 ip
       {
         end_op();
         return -1;
       }
-      ilock(ip);
+      ilock(ip); // 调用 ilock 函数锁定 inode，以便进行安全的读取和操作
       if (ip->type == T_SYMLINK && (omode & O_NOFOLLOW) == 0)
       {
-        if (++depth > max_depth)
+        if (++depth > max_depth) // 递增递归深度 depth
         {
           iunlockput(ip);
           end_op();
@@ -338,7 +338,7 @@ sys_open(void)
         }
         if (readi(ip, 0, (uint64)path, 0, MAXPATH) < MAXPATH)
         {
-          iunlockput(ip);
+          iunlockput(ip); // 调用 readi 函数读取符号链接的目标路径
           end_op();
           return -1;
         }
@@ -541,20 +541,20 @@ sys_pipe(void)
 }
 uint64 sys_symlink(void)
 {
-  char path[MAXPATH], target[MAXPATH];
+  char path[MAXPATH], target[MAXPATH]; // 存储符号链接的路径和存储符号链接指向的目标路径
   struct inode *ip;
 
   if (argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
     return -1;
 
-  begin_op();
-  if ((ip = create(path, T_SYMLINK, 0, 0)) == 0)
+  begin_op();                                    // 开始一个文件系统操作
+  if ((ip = create(path, T_SYMLINK, 0, 0)) == 0) // 创建一个新的符号链接文件
   {
     end_op();
     return -1;
   }
 
-  if (writei(ip, 0, (uint64)target, 0, MAXPATH) < MAXPATH)
+  if (writei(ip, 0, (uint64)target, 0, MAXPATH) < MAXPATH) // 将目标路径 target 写入到符号链接文件中
   {
     iunlockput(ip);
     end_op();
@@ -562,6 +562,6 @@ uint64 sys_symlink(void)
   }
 
   iunlockput(ip);
-  end_op();
+  end_op(); // 结束文件系统操作
   return 0;
 }

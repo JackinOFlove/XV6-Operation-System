@@ -385,18 +385,18 @@ bmap(struct inode *ip, uint bn)
   uint addr, *a;
   struct buf *bp;
 
-  if (bn < NDIRECT)
+  if (bn < NDIRECT) // 处理直接块
   {
-    if ((addr = ip->addrs[bn]) == 0)
+    if ((addr = ip->addrs[bn]) == 0) // 如果块地址为 0，则分配一个新的块并记录到 inode。
       ip->addrs[bn] = addr = balloc(ip->dev);
     return addr;
   }
   bn -= NDIRECT;
 
-  if (bn < NINDIRECT)
+  if (bn < NINDIRECT) // 处理一级间接块
   {
     // Load indirect block, allocating if necessary.
-    if ((addr = ip->addrs[NDIRECT]) == 0)
+    if ((addr = ip->addrs[NDIRECT]) == 0) // 如果间接块地址为 0，则分配一个新的间接块。
       ip->addrs[NDIRECT] = addr = balloc(ip->dev);
     bp = bread(ip->dev, addr);
     a = (uint *)bp->data;
@@ -409,13 +409,14 @@ bmap(struct inode *ip, uint bn)
     return addr;
   }
   bn -= NINDIRECT;
-  if (bn < NDINDIRECT)
+
+  if (bn < NDINDIRECT) // 处理二级间接块
   {
-    if ((addr = ip->addrs[NDIRECT + 1]) == 0)
+    if ((addr = ip->addrs[NDIRECT + 1]) == 0) // 如果需要分配二级内存
       ip->addrs[NDIRECT + 1] = addr = balloc(ip->dev);
     bp = bread(ip->dev, addr);
     a = (uint *)bp->data;
-    if ((addr = a[bn / NINDIRECT]) == 0)
+    if ((addr = a[bn / NINDIRECT]) == 0) // 读取二级间接块
     {
       a[bn / NINDIRECT] = addr = balloc(ip->dev);
       log_write(bp);
@@ -443,7 +444,7 @@ void itrunc(struct inode *ip)
   struct buf *bp;
   uint *a;
 
-  for (i = 0; i < NDIRECT; i++)
+  for (i = 0; i < NDIRECT; i++) // 处理直接块
   {
     if (ip->addrs[i])
     {
@@ -452,7 +453,7 @@ void itrunc(struct inode *ip)
     }
   }
 
-  if (ip->addrs[NDIRECT])
+  if (ip->addrs[NDIRECT]) // 处理一级间接块
   {
     bp = bread(ip->dev, ip->addrs[NDIRECT]);
     a = (uint *)bp->data;
@@ -468,7 +469,7 @@ void itrunc(struct inode *ip)
   struct buf *bp2;
   uint *a2;
 
-  if (ip->addrs[NDIRECT + 1])
+  if (ip->addrs[NDIRECT + 1]) // 处理二级间接块
   {
     bp = bread(ip->dev, ip->addrs[NDIRECT + 1]);
     a = (uint *)bp->data;
