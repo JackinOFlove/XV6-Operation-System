@@ -23,7 +23,7 @@ struct
 {
   struct spinlock lock;
   struct run *freelist;
-} kmem[NCPU]; // each cpu has one
+} kmem[NCPU]; // 每个CPU都有一个独立的内存管理单元
 
 void kinit()
 {
@@ -60,13 +60,13 @@ void kfree(void *pa)
 
   r = (struct run *)pa;
 
-  push_off(); // need tu interrupt before get cpuid()
+  push_off(); // 关闭中断，以确保在获取 CPU ID 之前不会发生中断
   int id = cpuid();
-  acquire(&kmem[id].lock);
+  acquire(&kmem[id].lock); // 获取当前 CPU 的自旋锁
   r->next = kmem[id].freelist;
   kmem[id].freelist = r;
-  release(&kmem[id].lock);
-  pop_off();
+  release(&kmem[id].lock); // 释放自旋锁
+  pop_off();               // 恢复中断
 }
 
 // Allocate one 4096-byte page of physical memory.
@@ -77,10 +77,10 @@ kalloc(void)
 {
   struct run *r;
 
-  push_off();
-  int id = cpuid();
-  acquire(&kmem[id].lock);
-  r = kmem[id].freelist;
+  push_off();              // 关闭中断，确保以下操作不被打断
+  int id = cpuid();        // 获取当前 CPU 的 ID
+  acquire(&kmem[id].lock); // 获取当前 CPU 的自旋锁
+  r = kmem[id].freelist;   // 尝试从当前 CPU 的空闲列表中获取内存块
   if (r)
     kmem[id].freelist = r->next;
   else
@@ -101,8 +101,8 @@ kalloc(void)
       release(&kmem[new_id].lock);
     }
   }
-  release(&kmem[id].lock);
-  pop_off();
+  release(&kmem[id].lock); // 释放当前 CPU 的自旋锁
+  pop_off();               // 恢复中断
 
   if (r)
     memset((char *)r, 5, PGSIZE); // fill with junk

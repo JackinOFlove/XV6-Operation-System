@@ -24,7 +24,7 @@
 #define NBUCKETS 13
 struct
 {
-  struct spinlock lock[NBUCKETS];
+  struct spinlock lock[NBUCKETS]; // 每个桶的锁
   struct buf buf[NBUF];
 
   // Linked list of all buffers, through prev/next.
@@ -40,18 +40,18 @@ void binit(void)
 {
   struct buf *b;
 
-  for (int i = 0; i < NBUCKETS; i++)
+  for (int i = 0; i < NBUCKETS; i++) // 初始化每个桶的锁
   {
     initlock(&bcache.lock[i], "bcache");
   }
 
   // Create linked list of buffers
-  for (int i = 0; i < NBUCKETS; i++)
+  for (int i = 0; i < NBUCKETS; i++) // 创建缓冲区的双向链表
   {
     bcache.head[i].prev = &bcache.head[i];
     bcache.head[i].next = &bcache.head[i];
   }
-  for (b = bcache.buf; b < bcache.buf + NBUF; b++)
+  for (b = bcache.buf; b < bcache.buf + NBUF; b++) // 将所有缓冲区放入第一个桶的链表中
   {
     b->next = bcache.head[0].next;
     b->prev = &bcache.head[0];
@@ -91,7 +91,7 @@ bget(uint dev, uint blockno)
   while (1)
   {
     i = (i + 1) % NBUCKETS;
-    if (i == id)
+    if (i == id) // 防止死循环
       continue;
     acquire(&bcache.lock[i]);
     for (b = bcache.head[i].prev; b != &bcache.head[i]; b = b->prev)
@@ -103,13 +103,12 @@ bget(uint dev, uint blockno)
         b->valid = 0;
         b->refcnt = 1;
 
-        // disconnect
-        b->prev->next = b->next;
+        b->prev->next = b->next; // 断开当前缓冲区的链表连接
         b->next->prev = b->prev;
 
         release(&bcache.lock[i]);
 
-        b->prev = &bcache.head[id];
+        b->prev = &bcache.head[id]; // 将缓冲区插入到新的位置
         b->next = bcache.head[id].next;
         b->next->prev = b;
         b->prev->next = b;
